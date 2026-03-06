@@ -145,13 +145,11 @@ elif page == "Console d'Arbitrage":
     elif st.session_state.questions_df.empty:
         st.error("Importez les questions d'abord.")
     else:
-        # FILTRAGE DES MATCHS : On ne garde que ceux qui ne sont pas 'Terminé'
         available_matches = [mid for mid, data in st.session_state.matches.items() if data['status'] != 'Terminé']
         
         if not available_matches:
             st.success("🏁 Tous les matchs sont terminés ! Consultez l'onglet 'Classement Général'.")
             if st.button("Voir les classements"):
-                # Simulation de changement de page (le bouton Classement dans la sidebar est là pour ça)
                 st.info("Utilisez le menu à gauche pour voir les résultats finaux.")
         else:
             m_id = st.selectbox("Sélectionner la rencontre à arbitrer", available_matches, 
@@ -232,5 +230,13 @@ elif page == "Classement Général":
             df_r.columns = ['Équipe', 'Points Match', 'Total Quiz']
             st.table(df_r.sort_values(by=['Points Match', 'Total Quiz'], ascending=False))
         with p_rank:
-            p_list = [{"Joueur": p, "Equipe": st.session_state.teams_df[st.session_state.teams_df['Joueur']==p]['Equipe'].values[0], "Score": s} for p, s in st.session_state.player_scores.items()]
+            # FIX: safe lookup — players in player_scores may not exist in teams_df
+            def get_team(player):
+                match = st.session_state.teams_df[st.session_state.teams_df['Joueur'] == player]
+                return match['Equipe'].values[0] if len(match) > 0 else "—"
+
+            p_list = [
+                {"Joueur": p, "Equipe": get_team(p), "Score": s}
+                for p, s in st.session_state.player_scores.items()
+            ]
             st.dataframe(pd.DataFrame(p_list).sort_values(by="Score", ascending=False), use_container_width=True, hide_index=True)
